@@ -1,0 +1,340 @@
+<!DOCTYPE html >
+<html lang="en" >
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <!-- 引入组件库 -->
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+
+    <style>
+        .demo-table-expand {
+            font-size: 0;
+        }
+        .demo-table-expand label {
+            width: 90px;
+            color: #99a9bf;
+        }
+        .demo-table-expand .el-form-item {
+            margin-right: 0;
+            margin-bottom: 0;
+            width: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div id="list">
+        <el-input
+                style="width:200px;"
+                placeholder="请输入名称"
+                v-model="searchName"
+                clearable>
+        </el-input>
+        <el-button type="primary" @click="searchByName" icon="el-icon-search">搜索</el-button>
+        <el-button type="primary" @click="addDept">添加</el-button>
+        <el-table
+                @sort-change='sortChange'
+                :data="admins"
+                style="width: 100%">
+            <el-table-column
+                    sortable="custom"
+                    label="编号"
+                    prop="deptno">
+            </el-table-column>
+            <el-table-column
+                    label="名称"
+                    prop="dname">
+            </el-table-column>
+            <el-table-column
+                    label="地址"
+                    prop="loc">
+            </el-table-column>
+            <el-table-column
+                    label="时间"
+                    prop="createtime">
+            </el-table-column>
+            <el-table-column
+                    prop="imageUrls"
+                    label="头像"
+                    width="180">
+                <!-- 图片的显示
+                <template  slot-scope="scope">
+                    <img v-for="url in (scope.row.imageUrls.split(','))" :src="url" min-width="60" height="60" />
+                </template>-->
+            </el-table-column>
+            <el-table-column
+                    label="操作"
+                    >
+                <template slot-scope="scope">
+                    <el-button
+                            size="mini"
+                            @click="editDept(scope.row.deptno)">Edit</el-button>
+                    <el-button
+                            size="mini"
+                             type="danger"
+                            @click="delDept( scope.row.deptno)">Delete</el-button>
+                </template>
+            </el-table-column>
+        </el-table>
+
+        <el-dialog title="部门信息" :visible.sync="dialogFormVisible">
+            <el-form :model="form" ref="form">
+                <el-input v-model="form.id" type="hidden"  autocomplete="off"></el-input>
+                <el-form-item label="ID":label-width="formLabelWidth">
+                    <el-input v-model="form.deptno"  :disabled="disabled"  autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="名称" :label-width="formLabelWidth">
+                    <el-input v-model="form.dname" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="地址" :label-width="formLabelWidth">
+                    <el-input v-model="form.loc" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="时间"  :label-width="formLabelWidth">
+                    <div class="block">
+                        <el-date-picker
+                                value-format="yyyy-MM-dd HH:mm:ss"
+                                v-model="form.createtime"
+                                type="datetime"
+                                placeholder="选择日期时间">
+                        </el-date-picker>
+                    </div>
+                </el-form-item>
+                <!---------------------图片上传---------------------------------->
+                <el-upload
+                        action="upload"
+                        list-type="picture-card"
+                        accept="image/png, image/jpeg"
+                        multiple
+                        :file-list="form.fileLists"
+                        :on-preview="handlePictureCardPreview"
+                        :on-remove="handleRemove"
+                        :on-success="uploadSuccess"
+                        :show-file-list="true">
+                    <i class="el-icon-plus"></i>
+                </el-upload>
+                <el-dialog :visible.sync="dialogVisibleImage">
+                    <img width="100%" :src="dialogImageUrl" alt="photo">
+                </el-dialog>
+
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button @click="dialogFormVisible = false">取 消</el-button>
+                <el-button type="primary" @click="saveDept()">确 定</el-button>
+            </div>
+        </el-dialog>
+        <!---------------------------------分页--------------------------------------------->
+        <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="pageNo"
+                :page-sizes="[3,6,9 ]"
+                :page-size="pageSize"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+        </el-pagination>
+    </div>
+<script>
+
+    var vm=new Vue({
+        el:"#list",
+        data:{
+            id:'',
+            admins:[],
+            dialogFormVisible :false,
+            searchName:'',
+            form: {
+                deptno: '',
+                dname: '',
+                createtime:'',
+                loc: '',
+                disabled:false,
+                fileLists: [],
+                imageUrls:''
+            },
+            formLabelWidth: '120px',
+            //当前页
+            pageNo:1,
+            //一页显示多少条
+            pageSize:6,
+            //总计多少条数据
+            total:0,
+            prop:'',
+            orderd:'',
+            dialogImageUrl:'',
+        },
+        created:function () {
+            var temp=this;
+            var start=(this.pageNo-1)*this.pageSize;
+            var end=this.pageSize;
+            //封装分页查询条件
+            var query={"start":start,"end":end};
+            axios.post('listDept',query)
+                .then(function (value) {
+                    temp.admins=value.data.rowList;
+                    vm.total = value.data.totalList;
+                })
+                .catch(function (error) {
+                    console.log(error);
+                });
+        },
+        methods:{
+            loadingData: function () {
+                //定义请求的url
+                var url = "listDept";
+                //查询
+                var searchName=vm.searchName;
+                //分页
+                var start=(this.pageNo-1)*this.pageSize;
+                var end=this.pageSize;
+                //排序
+                var prop=vm.prop;
+                var orderd=vm.orderd;
+                //封装分页查询条件
+                var query={"start":start,"end":end,"searchName":searchName,"prop":prop,"orderd":orderd};
+                axios.post(url,query).then(function (value) {
+                    vm.admins=value.data.rowList;
+                    vm.total = value.data.totalList;
+                });
+            },
+            editDept:function(deptno){
+                this.dialogFormVisible =true;
+                this.disabled=true;
+                var params =  new URLSearchParams();
+                params.append('deptno',deptno);
+                var temp=this;
+
+                axios.post('getDept', params)
+                    .then(function (value) {
+                        temp.form= {
+                            deptno:value.data.deptno,
+                            dname:value.data.dname,
+                            loc: value.data.loc,
+                            createtime: value.data.createtime,
+                            id:value.data.deptno,
+                            imageUrls:value.data.imageUrls,
+                        }
+                        var tempArray=vm.form.imageUrls.split(',');//将字符串转换成字符串数组
+                        vm.form.fileLists=[];
+                        for(var i=0;i<tempArray.length;i++){
+                            //封装editeFileLists 对象数组
+                            vm.form.fileLists.push({"url":tempArray[i]});
+                        }
+                    })
+                    .catch(function (error) {
+                        console.log(error);
+                    });
+                },
+            saveDept:function () {
+                this.dialogFormVisible = false;
+                var temp=this;
+                var urls=[];
+                for (var i=0;i<vm.form.fileLists.length;i++){
+                    urls.push(vm.form.fileLists[i].url);
+                }
+                vm.form.imageUrls=urls.join(',');
+                if(this.form.id!=''){
+                    axios.post('saveDept',vm.form)
+                        .then(function (value) {
+                            vm.loadingData();
+                        })
+                        .catch(function (error) {
+                            console.log(error);
+                        });
+                }else{
+                    axios.post('addDept', vm.form)
+                        .then(function (value) {
+                            vm.loadingData();
+                        })
+                        .catch(function (error) {
+                            console.log(error);
+                        });
+                }
+
+            },
+            delDept:function (deptno) {
+                var params =  new URLSearchParams();
+                params.append('deptno',deptno);
+                var temp=this;
+                axios.post('delDept', params)
+                    .then(function (value) {
+                        vm.loadingData();
+                    })
+                    .catch(function (error) {
+                        console.log(error);
+                    });
+            },
+            addDept:function () {
+                vm.disabled=false;
+                vm.form={
+                        id:'',
+                        deptno: '',
+                        dname: '',
+                        createtime:'',
+                        loc: '',
+                        disabled:false,
+                        fileLists: [],
+                        imageUrls:''
+                },
+                vm.dialogFormVisible =true;
+            },
+            //修改一页显示多少行
+            handleSizeChange:function (pageSize) {
+                vm.pageSize=pageSize;
+                //刷新页面
+                vm.loadingData();
+
+            },
+            //修改当前页
+            handleCurrentChange:function (pageNo) {
+                //vm.pageNo是全局变量，跟view绑定，参数pageNo是切换当前页传入的值
+                vm.pageNo=pageNo;
+                //刷新页面
+                vm.loadingData();
+            },
+            //按照部门名称模糊搜索
+            searchByName:function () {
+                vm.loadingData();
+            },
+            sortChange:function (column,prop, order) {
+                vm.prop=column.prop;
+               if(column.order.indexOf("asc")!=-1){
+                   vm.orderd="asc";
+               }
+               if(column.order.indexOf("desc")!=-1){
+                   vm.orderd="desc";
+               }
+                 vm.loadingData();
+            },
+            handleRemove:function(file, fileList) {
+                // console.log(file, fileList);
+                vm.fileChange(fileList);
+                //删除后台图片
+                console.log(vm.fileLists)
+            },
+            //图片预览
+            handlePictureCardPreview:function(file) {
+                vm.dialogImageUrl = file.url;
+                vm.dialogVisibleImage = true;
+            },
+            uploadSuccess: function (response, file, fileList) {
+                console.log(fileList)
+                vm.fileChange(fileList);
+            },
+            // 设置图片值
+            fileChange:function(fileList) {
+                if(fileList.length > 0){
+                    for(var i=0; i<fileList.length; i++){
+                        if(fileList[i].response){
+                            vm.form.fileLists.push({"url":fileList[i].response.url})
+                        }
+                    }
+                }
+            },
+        }
+    })
+</script>
+</body>
+</html>

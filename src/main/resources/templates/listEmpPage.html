@@ -1,0 +1,238 @@
+<!DOCTYPE html >
+<html lang="en" >
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <!-- 引入样式 -->
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <!-- 引入组件库 -->
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+
+    <style>
+        .demo-table-expand {
+            font-size: 0;
+        }
+        .demo-table-expand label {
+            width: 90px;
+            color: #99a9bf;
+        }
+        .demo-table-expand .el-form-item {
+            margin-right: 0;
+            margin-bottom: 0;
+            width: 50%;
+        }
+    </style>
+</head>
+<body>
+    <div id="list">
+        <el-button type="primary" @click="addDept">添加</el-button>
+        <el-table
+                @sort-change='sortChange'
+                :data="admins"
+                style="width: 100%">
+            <el-table-column
+                    sortable="custom"
+                    label="编号"
+                    prop="empno">
+            </el-table-column>
+            <el-table-column
+                    label="名称"
+                    prop="ename">
+            </el-table-column>
+            <el-table-column
+                    label="工作"
+                    prop="job">
+            </el-table-column>
+            <el-table-column
+                    label="上司"
+                    prop="mgr">
+            </el-table-column><el-table-column
+                    label="工资"
+                    prop="sal">
+            </el-table-column>
+            <el-table-column
+                    label="奖金"
+                    prop="comm">
+            </el-table-column>
+            <el-table-column
+                    label="部门编号"
+                    prop="deptno">
+            </el-table-column>
+            <el-table-column
+                    label="入职时间"
+                    prop="hiredate">
+            </el-table-column>
+        </el-table>
+
+        <el-dialog title="员工信息" :visible.sync="dialogFormVisible">
+            <el-form :model="form" ref="form">
+                <el-input v-model="form.id" type="hidden"  autocomplete="off"></el-input>
+                <el-form-item label="名称" :label-width="formLabelWidth">
+                    <el-input v-model="form.ename" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="工作" :label-width="formLabelWidth">
+                    <el-input v-model="form.job" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="上司" :label-width="formLabelWidth">
+                    <el-input v-model="form.mgr" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="工资" :label-width="formLabelWidth">
+                    <el-input v-model="form.sal" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="奖金" :label-width="formLabelWidth">
+                    <el-input v-model="form.comm" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="部门编号" :label-width="formLabelWidth">
+                    <el-input v-model="form.deptno" autocomplete="off"></el-input>
+                </el-form-item>
+                <el-form-item label="入职时间"  :label-width="formLabelWidth">
+                    <div class="block">
+                        <el-date-picker
+                                value-format="yyyy-MM-dd HH:mm:ss"
+                                v-model="form.hiredate"
+                                type="datetime"
+                                placeholder="选择日期时间">
+                        </el-date-picker>
+                    </div>
+                </el-form-item>
+            </el-form>
+            <div slot="footer" class="dialog-footer">
+                <el-button @click="dialogFormVisible = false">取 消</el-button>
+                <el-button type="primary" @click="saveDept()">确 定</el-button>
+            </div>
+        </el-dialog>
+        <!---------------------------------分页--------------------------------------------->
+        <el-pagination
+                @size-change="handleSizeChange"
+                @current-change="handleCurrentChange"
+                :current-page="pageNo"
+                :page-sizes="[3,6,9 ]"
+                :page-size="pageSize"
+                layout="total, sizes, prev, pager, next, jumper"
+                :total="total">
+        </el-pagination>
+    </div>
+<script>
+
+    var vm=new Vue({
+        el:"#list",
+        data:{
+            id:'',
+            admins:[],
+            dialogFormVisible :false,
+            searchName:'',
+            form: {
+                id:'',
+                ename:'',
+                job:'',
+                mgr:'',
+                hiredate:'',
+                sal:'',
+                comm:'',
+                deptno:''
+            },
+            formLabelWidth: '120px',
+            //当前页
+            pageNo:1,
+            //一页显示多少条
+            pageSize:6,
+            //总计多少条数据
+            total:0,
+            prop:'',
+            orderd:''
+        },
+        created:function () {
+            var start=(this.pageNo-1)*this.pageSize;
+            var end=this.pageSize;
+            //封装分页查询条件
+            var query={"start":start,"end":end};
+            axios.post('listEmp',query)
+                .then(function (value) {
+                    vm.admins=value.data.rowEmp;
+                    vm.total = value.data.total;
+                })
+                .catch(function (error) {
+                    console.log(error);
+                });
+        },
+        methods:{
+            loadingData: function () {
+                //定义请求的url
+                var url = "listEmp";
+                //查询
+                //var searchName=vm.searchName;
+                //分页
+                var start=(this.pageNo-1)*this.pageSize;
+                var end=this.pageSize;
+                //排序
+                var prop=vm.prop;
+                var orderd=vm.orderd;
+                //封装分页查询条件
+                var query={"start":start,"end":end,"prop":prop,"orderd":orderd};
+                axios.post(url,query).then(function (value) {
+                    vm.admins=value.data.rowEmp;
+                    vm.total = value.data.total;
+                });
+            },
+            saveDept:function () {
+                this.dialogFormVisible = false;
+                axios.post("addEmp",vm.form)
+                    .then(function (value) {
+                        vm.loadingData();
+                        vm.open5(value.data.message);
+            })
+                    .catch(function (error) {
+                        console.log(error);
+                    });
+            },
+            open5:function(msg) {
+                this.$notify.info({
+                    title: '提示',
+                    message: msg
+                });
+            },
+            addDept:function () {
+                vm.disabled=false;
+                vm.form= {
+                        id:'',
+                        ename:'',
+                        job:'',
+                        mgr:'',
+                        hiredate:'',
+                        sal:'',
+                        comm:'',
+                        deptno:''
+                },
+                vm.dialogFormVisible =true;
+            },
+            //修改一页显示多少行
+            handleSizeChange:function (pageSize) {
+                vm.pageSize=pageSize;
+                //刷新页面
+                vm.loadingData();
+
+            },
+            //修改当前页
+            handleCurrentChange:function (pageNo) {
+                //vm.pageNo是全局变量，跟view绑定，参数pageNo是切换当前页传入的值
+                vm.pageNo=pageNo;
+                //刷新页面
+                vm.loadingData();
+            },
+            sortChange:function (column,prop, order) {
+                vm.prop=column.prop;
+               if(column.order.indexOf("asc")!=-1){
+                   vm.orderd="asc";
+               }
+               if(column.order.indexOf("desc")!=-1){
+                   vm.orderd="desc";
+               }
+                 vm.loadingData();
+            }
+        }
+    })
+</script>
+</body>
+</html>

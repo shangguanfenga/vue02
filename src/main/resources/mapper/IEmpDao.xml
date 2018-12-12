@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.aaa.dao.IEmpDao">
+	<select id="listEmp" parameterType="map" resultType="map">
+		select * from emp
+		  <if test="prop!=null and prop!=''">
+			  order by ${prop}
+		  </if>
+		  <if test="orderd!=null and orderd!=''">
+			  ${orderd}
+		  </if>
+		  limit #{start},#{end}
+	</select>
+	<select id="countEmp" parameterType="map" resultType="integer">
+		select count(*) from emp
+	</select>
+
+
+	<insert id="addEmp" parameterType="com.aaa.entity.Emp">
+		insert into emp (ename,job,mgr,hiredate,sal,comm,deptno)
+		values(#{ename,jdbcType=VARCHAR},#{job,jdbcType=VARCHAR},#{mgr,jdbcType=VARCHAR},
+		       #{hiredate,jdbcType=TIMESTAMP},#{sal,jdbcType=VARCHAR},#{comm,jdbcType=VARCHAR},#{deptno,jdbcType=INTEGER})
+	</insert>
+</mapper>
